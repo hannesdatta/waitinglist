@@ -1,0 +1,79 @@
+---
+# title: "Wachtrij tool: R Markdown / Shiny version"
+# author: "Datta, De With, Pieters"
+# date: "October 30, 2019"
+# output: html_document
+runtime: shiny
+---
+
+<!-- Markdown setup -->
+```{r setup, include = F}
+knitr::opts_chunk$set(echo = F, include = F, message = F, error = F, warning = F)
+```
+
+<!-- ######################################################################  -->
+
+<!-- Settings -->
+```{r}
+# Refresh time (in seconds)
+refresh = 30
+
+# Id from the target Google sheet
+id = "1qgJzB5oRE3xx-yUxn4vKWWuUWBbrvVBAfIFJENEl0_o"
+
+```
+
+<!-- ######################################################################  -->
+
+<!-- Preliminaries -->
+```{r}
+# Load packages
+library(googlesheets)
+
+# Authenticate
+gs_auth()
+
+# Set key for Google Sheets
+wb <- gs_key(id)
+
+# Define functions
+autoInvalidate <- reactiveTimer(refresh*1000) # reactiveTimer(T) -> update every T Ms
+
+updatedata <- function(){
+  wb <- gs_key("1qgJzB5oRE3xx-yUxn4vKWWuUWBbrvVBAfIFJENEl0_o")
+  data <- gs_read(wb)
+  return(data)
+}
+```
+
+<!-- Function to update outputs -->
+```{r}
+observe({
+  
+autoInvalidate() # Update every T Ms
+
+data <- updatedata() # Update the data
+colnames(data) = c("Tijd", "Naam", "Tafelnummer", "Beantwoord")
+  
+# Define the outputs
+output$output4 <- renderText(length(data$Tijd))
+output$output2 <- renderText(length(data[is.na(data$Beantwoord),]$Tijd))
+output$output3 <- renderTable(data[is.na(data$Beantwoord),1:3], align = "c")
+output$output1 <- renderText(as.character(strftime(Sys.time(), format="%H:%M:%S")))
+
+})
+
+```
+
+<!-- Body: Render outputs -->
+<br>
+<h1>Totaal aantal wachtenden: `r textOutput("output2", inline = T)`</h1>
+<br>
+<!-- <h3>Wachtenden: <br> -->
+`r tableOutput("output3")`
+<br>
+<h3>Totaal aantal vragen gesteld: `r textOutput("output4", inline = T)`</h3>
+<br>
+<h4>Laatste update: `r textOutput("output1", inline = T)`</h4>
+
+<!-- That's it! -->
